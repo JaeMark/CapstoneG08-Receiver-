@@ -2,8 +2,6 @@
 import threading
 import socket
 
-from capstoneg08_clientmessagehandler import ClientMessageHandler
-
 class ClientConnection(threading.Thread):
     def __init__(self, clientSocket, myClientMessageHandler, myTCPServer):
         threading.Thread.__init__(self)
@@ -14,8 +12,6 @@ class ClientConnection(threading.Thread):
         
         self.stopThisThread = False
         
-        self.myClientCommandHandler = ClientMessageHandler(self.myTCPServer)
-        
     def disconnectClient(self):
         try:
             self.stopThisThread = True
@@ -23,6 +19,9 @@ class ClientConnection(threading.Thread):
             self.clientSocket is None
         except socket.error as SocketError:
             print("Unable to disconnect from server, because ", repr(SocketError))
+    
+    def sendMessageToClient(self, msg):
+        self.clientSocket.send(msg)
     
     def run(self):
         clientMsg = ''

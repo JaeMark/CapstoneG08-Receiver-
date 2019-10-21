@@ -2,7 +2,8 @@
 import threading
 import socket
 
-from capstoneg08_clientconnection import ClientConnection
+from capstoneg08_clientconnection.ClientConnection import ClientConnection
+from capstoneg08_clientmessagehandler.ClientMessageHandler import ClientMesssageHandler
 
 class TCPServer(threading.Thread):
     def __init__(self, host, portNumber):
@@ -12,9 +13,11 @@ class TCPServer(threading.Thread):
         self.portNumber = portNumber
         
         self.isListening = False
+        
+        self.myClientMessageHandler = ClientMesssageHandler(self)
     
     def startServer(self):
-        if(self.serverSocket is None):
+        if(self.serverSocket is not None):
             self.stopServer()
         else:
             try:
@@ -43,7 +46,7 @@ class TCPServer(threading.Thread):
             if self.isListening:
                 try:
                     self.clientSocket = self.serverSocket.accept()
-                    myCC = ClientConnection(self.clientSocket, self.myClientCommandHandler, self)
+                    myCC = ClientConnection(self.clientSocket, self.myClientMessageHandler, self)
                     myCC.start()   
                 except socket.error as SocketError:
                     print("Unable to connect to client, because ", repr(SocketError))
