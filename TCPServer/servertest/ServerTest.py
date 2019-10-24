@@ -2,8 +2,10 @@
 import threading
 from capstoneg08_tcpserver.TCPServer import TCPServer
 
+BUFF_SIZE = 1024
+
 def serverTest():
-    myTCPServer = TCPServer('localhost', 8080)
+    myTCPServer = TCPServer(BUFF_SIZE, 'localhost', 8080)
     myTCPServer.startServer()
     myTCPServer.start()
     

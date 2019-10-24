@@ -5,11 +5,15 @@ DELIM = '\n'
 class ClientMesssageHandler():
     def __init__(self, myTCPServer):
         self.myTCPServer = myTCPServer
-        
-    def handleClientMessage(self, myClientConncetion, msg):
-        if msg == 'c':
-            print("The message %d from client was successuffly received", msg)
-        else:
-            print("Command does not exist")
+    
+    def handleClientMessage(self, myClientConnection, msg):
+        clientCommand = msg.decode()
+        if clientCommand == 'c':
+            myClientConnection.sendMessageToClient("The message from client was successuffly received".encode())
+            print("The message \'" + clientCommand + "\' from client was successuffly received")
+        else if (clientCommand == ''):
+            break
+        else:   
+            print("Command \'" + clientCommand + "\' does not exist")
     
     

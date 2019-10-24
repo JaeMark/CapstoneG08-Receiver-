@@ -2,13 +2,16 @@
 import threading
 import socket
 
+from capstoneg08_clientmessagehandler.ClientMessageHandler import ClientMesssageHandler
+
 class ClientConnection(threading.Thread):
-    def __init__(self, clientSocket, myClientMessageHandler, myTCPServer):
+    def __init__(self, clientSocket, myClientMessageHandler, myTCPServer, buffSize):
         threading.Thread.__init__(self)
         
         self.clientSocket = clientSocket
         self.myClientMessageHandler = myClientMessageHandler
         self.myTCPServer = myTCPServer
+        self.buffSize = buffSize
         
         self.stopThisThread = False
         
@@ -21,15 +24,13 @@ class ClientConnection(threading.Thread):
             print("Unable to disconnect from server, because ", repr(SocketError))
     
     def sendMessageToClient(self, msg):
-        self.clientSocket.send(msg)
+        self.clientSocket.sendall(msg)
     
     def run(self):
-        clientMsg = ''
         while not self.stopThisThread:
             try:
-                msg = self.clientSocket.read()
-                clientMsg = str(msg)
-                self.myClientMessageHandler(self, clientMsg)
+                msg = self.clientSocket.recv(self.buffSize)
+                self.myClientMessageHandler.handleClientMessage(self, msg)
             except BlockingIOError:
                 print("Unable to read message, because ", repr(BlockingIOError))
                 self.disconnectClient
