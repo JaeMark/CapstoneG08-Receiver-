@@ -2,7 +2,7 @@
 import threading
 import socket
 
-from capstoneg08_clientmessagehandler.ClientMessageHandler import ClientMesssageHandler
+from ClientMessageHandler import ClientMesssageHandler
 
 class ClientConnection(threading.Thread):
     def __init__(self, clientSocket, myClientMessageHandler, myTCPServer, buffSize):

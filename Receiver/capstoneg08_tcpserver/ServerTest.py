@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import threading
-from capstoneg08_tcpserver.TCPServer import TCPServer
+from TCPServer import TCPServer
 
 BUFF_SIZE = 1024
 

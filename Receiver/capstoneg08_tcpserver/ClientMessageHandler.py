@@ -11,8 +11,8 @@ class ClientMesssageHandler():
         if clientCommand == 'c':
             myClientConnection.sendMessageToClient("The message from client was successuffly received".encode())
             print("The message \'" + clientCommand + "\' from client was successuffly received")
-        else if (clientCommand == ''):
-            break
+        elif clientCommand == '':
+            return
         else:   
             print("Command \'" + clientCommand + "\' does not exist")
     

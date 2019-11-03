@@ -2,8 +2,8 @@
 import threading
 import socket
 
-from capstoneg08_clientconnection.ClientConnection import ClientConnection
-from capstoneg08_clientmessagehandler.ClientMessageHandler import ClientMesssageHandler
+from ClientConnection import ClientConnection
+from ClientMessageHandler import ClientMesssageHandler
 
 class TCPServer(threading.Thread):
     def __init__(self, buffSize, host, portNumber):
