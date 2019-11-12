@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 # CommandSender.py code is based on Python-Xbee Libary SendDataSample example found in 
 # https://github.com/digidotcom/xbee-python/tree/master/examples/communication/SendDataSample
-import threading
+from digi.xbee.exception import TimeoutException
+import json
 
-DATA_TO_SEND = "Hello XBee!"
+START_COMMAND = "START"
 REMOTE_NODE_ID = "REMOTE"
 
 
-class CommandSender(threading.Thread):
+class CommandSender():
     def __init__(self, device, dBManager):
-        threading.Thread.__init__(self)
         self.device = device
+        self.dBManager = dBManager
         self.remonte_device = ''
+        self.currCmd = ''
         
     def initSender(self):
         try:
@@ -24,14 +26,25 @@ class CommandSender(threading.Thread):
             if self.remote_device is None:
                 print("Could not find the remote device")
                 exit(1)
-        except BlockingIOError as error:
-            print("Unable to get device from Xbee network, because ", repr(error))
+        except TimeoutException as to:
+            print("Unable to get device from Xbee network, because ", repr(to))
     
-    def run(self):
+    def packageCmd(self, cmd):
+        data = {}
+        data['cmd'] = cmd
+        jsonData = json.dumps(data)
+        return jsonData
+    
+    def runCommandSender(self):
+        dataToSend = ''
         try:
-            print("Sending data to %s >> %s..." % (self.remote_device.get_64bit_addr(), DATA_TO_SEND))
-            self.device.send_data(self.remote_device, DATA_TO_SEND)
-            print("Success")
+            if(self.currCmd != START_COMMAND):
+                currCmd = self.dBManager.readCommand()
+                dataToSend = self.packageCmd(currCmd)
+                print("Sending data to %s >> %s..." % (self.remote_device.get_64bit_addr(), currCmd))
+                self.device.send_data(self.remote_device, dataToSend)
+                print("Success")
         finally:
             if self.device is not None and self.device.is_open():
                self.device.close() 
+               self.currCmd = ''

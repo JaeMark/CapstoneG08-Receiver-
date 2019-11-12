@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 # SerialReader.py code is based on Python-Xbee Libary ReceiveDataSample example found in 
 # https://github.com/digidotcom/xbee-python/tree/master/examples/communication/ReceiveDataSample
-import threading
+from digi.xbee.exception import TimeoutException
 
-class SerialReader(threading.Thread):
+class SerialReader():
     def __init__(self, device, dBManager):
-        threading.Thread.__init__(self)
         self.device = device
     
     def data_receive_callback(xbee_message):
@@ -16,13 +15,19 @@ class SerialReader(threading.Thread):
                 self.device.open()
         self.device.add_data_received_callback(self.data_receive_callback)
         
-    def run(self):
-        try:
-            
+    def runReceiver(self):
+        try: 
+            self.device.flush_queues()
             print("Waiting for data...\n")
-            input()
-        except BlockingIOError as error:
-            print("Unable to receive data, because ", repr(error))
+            while(True):
+                jsonPacket = self.device.read_data()
+                if jsonPacket is not None:
+                    volt = jsonPacket['volt']
+                    curr = jsonPacket['curr']
+                    timeStamp = jsonPacket['timeStamp']
+                    threading.Thread(target = self.dbManager.storeData(volt, curr, timeStamp)).start()         
+        except TimeoutException as to:
+            print("Unable to receive data, because ", repr(to))
         finally:
             if self.device is not None and self.device.is_open():
                 self.device.close()
