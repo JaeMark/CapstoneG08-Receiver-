@@ -1,45 +1,47 @@
 # -*- coding: utf-8 -*-
 import threading
+import json
 
 class DatabaseManager(threading.Thread):
     def __init__(self, databaseConn):
         threading.Thread.__init__(self)
         self.databaseConn = databaseConn;
         self.cursor = databaseConn.cursor()
-        
-    def createTestTable(self):
-        self.cursor.execute('''
-                            CREATE TABLE imports (
-                                    ImID bigint NOT NULL,
-                                    Instant NVARCHAR(255),
-                                    Volt NVARCHAR(255),
-                                    Curr NVARCHAR(255),
-                                    Processed int
-                                    PRIMARY KEY(ImID)
-                            )''')
-        self.databaseConn.commit()
                             
-    
-    def storeData(self, ImID, volt, curr, time):
-        toSQL = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
-        self.cursor.execute(toSQL, ImID, time, volt, curr, 0)
+    def storeData(self, jsonPacket):
+        dataPacket = json.loads(jsonPacket)
+        ImID = dataPacket['sampleNum']
+        time = dataPacket['time']
+        volt = dataPacket['volt']
+        curr = dataPacket['curr']
+        
+        sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
+        self.cursor.execute(sql, ImID, time, volt, curr, 0)
         self.databaseConn.commit()
-        print("Data packet containing the values: voltage = " + str(volt) + 
-              " current = " + str(curr) + " timestamp = "
+        print("Data packet containing the values: sample number = " + str(ImID) + ", voltage = " + str(volt) + 
+              ", current = " + str(curr) + ", timestamp = "
               + time + " has been stored")
         return
     
     def printDatabase(self):
-        toSQL = "SELECT * FROM imports"
-        self.cursor.execute(toSQL)
+        sql = "SELECT * FROM imports"
+        self.cursor.execute(sql)
         for row in self.cursor:
             print (row)
         self.databaseConn.commit()
                 
     def getCommand(self):
+        #sql = "SELECT cmd FROM COMMAND"
+        #self.cursor.execute(sql)
+        #cmd = self.cursor;
+        #self.databaseConn.commit()
+        
         # fake command
-        cmd = "START"
+        cmd = 'START'
         return cmd
     
-    def sendResponce(self):
+    def sendResponce(self, table, ID, msg):
+        sql = "INSERT INTO ? (?, ?) VALUES (?, ?);"
+        self.cursor.execute(sql, table, ID, msg)
+        self.databaseConn.commit()
         return

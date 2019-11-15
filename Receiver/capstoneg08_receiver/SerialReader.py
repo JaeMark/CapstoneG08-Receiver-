@@ -2,6 +2,7 @@
 # SerialReader.py code is based on Python-Xbee Libary ReceiveDataSample example found in 
 # https://github.com/digidotcom/xbee-python/tree/master/examples/communication/ReceiveDataSample
 from digi.xbee.exception import TimeoutException
+import threading
 
 class SerialReader():
     def __init__(self, device, dBManager):
@@ -22,10 +23,7 @@ class SerialReader():
             while(True):
                 jsonPacket = self.device.read_data()
                 if jsonPacket is not None:
-                    volt = jsonPacket['volt']
-                    curr = jsonPacket['curr']
-                    timeStamp = jsonPacket['timeStamp']
-                    threading.Thread(target = self.dbManager.storeData(volt, curr, timeStamp)).start()         
+                    threading.Thread(target = self.dbManager.storeData(jsonPacket)).start()         
         except TimeoutException as to:
             print("Unable to receive data, because ", repr(to))
         finally:

@@ -3,6 +3,7 @@
 # https://github.com/digidotcom/xbee-python/tree/master/examples/communication/SendDataSample
 from digi.xbee.exception import TimeoutException
 import json
+import threading
 
 START_COMMAND = "START"
 REMOTE_NODE_ID = "REMOTE"
@@ -39,7 +40,7 @@ class CommandSender():
         dataToSend = ''
         try:
             if(self.currCmd != START_COMMAND):
-                currCmd = self.dBManager.readCommand()
+                currCmd = threading.Thread(target = self.dbManager.readCommand()).start()         
                 dataToSend = self.packageCmd(currCmd)
                 print("Sending data to %s >> %s..." % (self.remote_device.get_64bit_addr(), currCmd))
                 self.device.send_data(self.remote_device, dataToSend)
