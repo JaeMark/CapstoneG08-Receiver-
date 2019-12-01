@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 import threading
 import json
+import time
+
+START_COMMAND = "START"
 
 class DatabaseManager(threading.Thread):
     def __init__(self, databaseConn):
         threading.Thread.__init__(self)
         self.databaseConn = databaseConn;
         self.cursor = databaseConn.cursor()
+        self.mcuCommand = ''
                             
     def storeData(self, jsonPacket):
         dataPacket = json.loads(jsonPacket)
@@ -29,19 +33,46 @@ class DatabaseManager(threading.Thread):
         for row in self.cursor:
             print (row)
         self.databaseConn.commit()
-                
-    def getCommand(self):
-        #sql = "SELECT cmd FROM COMMAND"
-        #self.cursor.execute(sql)
-        #cmd = self.cursor;
-        #self.databaseConn.commit()
         
-        # fake command
-        cmd = 'START'
-        return cmd
-    
-    def sendResponce(self, table, ID, msg):
-        sql = "INSERT INTO ? (?, ?) VALUES (?, ?);"
-        self.cursor.execute(sql, table, ID, msg)
-        self.databaseConn.commit()
+    def searchCommand(self):
+        waitingForStart = True;
+        while (waitingForStart):
+            sql = "SELECT COUNT(*) FROM mcuCmds WHERE Handshake = 0"
+            self.cursor.execute(sql)
+            numStartRequest = self.cursor.fetchone()[0]
+            if(numStartRequest > 0):
+                # there is a start request
+                waitingForStart = False;
+            self.databaseConn.commit()
+        dataToSend = {}
+        dataToSend['command'] = START_COMMAND   
+        jsonData = json.dumps(dataToSend)
+        self.mcuCommand = jsonData
+        return 
+        
+    def handshake(self):
+        while(True):
+            sql = "UPDATE mcuCmds SET Handshake = 1 WHERE Handshake = 0;"
+            self.cursor.execute(sql)
+            self.databaseConn.commit()
+            time.sleep(3)
         return
+    
+    def getCommand(self):
+        return self.mcuCommand
+                
+# =============================================================================
+#     def processesCommands(self):
+#         return "START"
+#         sql = "SELECT * FROM COMMAND WHERE Handshake = 1"
+#         self.cursor.execute(sql)
+#         ###
+#         self.databaseConn.commit()
+#         if cmd == 0:
+#             self.handshake(self, RxID)
+#             data = {}
+#             data['cmd'] = cmd
+#             packet = json.dumps(data)
+#             self.MCUCommand = packet
+# =============================================================================
+    

@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 import pyodbc
 import json
+import threading
 from digi.xbee.devices import XBeeDevice
 from DatabaseManager import DatabaseManager
 from CommandSender import CommandSender
 from SerialReader import SerialReader
 
-PORT = "COM1"
+PORT = "COM3"
 BAUD_RATE = 9600
 
 def initReceiver():
@@ -16,49 +17,20 @@ def initReceiver():
     
     print("Initializing XBee Device.")
     device = XBeeDevice(PORT, BAUD_RATE)
+    if device is not None and device.is_open():
+       device.close()
     myCommandSender = CommandSender(device, dBManager)
     mySerialReader = SerialReader(device, dBManager)
 
-    print("Initializing Receiver Program.")
+    print("Initializing Command Sender Program.")
     myCommandSender.initSender()
+    print("Launching Command Sender Program.")    
+    threading.Thread(target = myCommandSender.runCommandSender()).start()
+    
+    print("Initializing Receiver Program.")
     mySerialReader.initReceiver()
-
     print("Launching Receiver Program.")    
-    myCommandSender.runCommandSender()
-    mySerialReader.runReceiver()
+    threading.Thread(target = mySerialReader.runReceiver()).start()
     return
- 
-def dataBaseTest():
-    print("Connecting to Local Database.")
-    conn = pyodbc.connect("Driver={SQL Server};Server=localhost\SQLEXPRESS;Database=master;Trusted_Connection=True")
-    dBManager = DatabaseManager(conn)
-    
-    # test database
-    cursor = conn.cursor()
-#    print("Creating Test Table.")
-#    cursor.execute('''
-#                   CREATE TABLE imports (
-#                           ImID bigint NOT NULL,
-#                           Instant NVARCHAR(255),
-#                           Volt NVARCHAR(255),
-#                           Curr NVARCHAR(255),
-#                           Processed int
-#                           PRIMARY KEY(ImID)
-#                   )''')
-#    conn.commit()
-    
-    print("Inserting Table Row")
-    data = {}
-    data['sampleNum'] = 66
-    data['time'] = "2019-11-11 10:57:00"
-    data['volt'] = 1.23456
-    data['curr'] = 0.12345
-    jsonData = json.dumps(data)
-    dBManager.storeData(jsonData)
-    #dBManager.storeData(16, 1.23456, 0.12345, "2019-11-11 10:57:00")
-    
-    print("Printing Imports Table.")
-    dBManager.printDatabase()
- 
-#initReceiver()
-dataBaseTest()
+
+initReceiver()
