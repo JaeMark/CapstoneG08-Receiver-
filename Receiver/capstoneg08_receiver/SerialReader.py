@@ -26,7 +26,7 @@ class SerialReader(threading.Thread):
                 jsonPacket = self.device.read_data()
                 print(jsonPacket)
                 if jsonPacket is not None:
-                    threading.Thread(target = self.dbManager.storeData(jsonPacket)).start()  
+                    threading.Thread(target = self.dBManager.storeData(jsonPacket)).start()  
         except TimeoutException as to:
             print("Unable to receive data, because ", repr(to))
         finally:

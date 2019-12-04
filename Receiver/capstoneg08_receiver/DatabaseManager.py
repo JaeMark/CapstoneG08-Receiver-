@@ -22,13 +22,23 @@ class DatabaseManager(threading.Thread):
         sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
         self.cursor.execute(sql, ImID, time, volt, curr, 0)
         self.databaseConn.commit()
-        print("Data packet containing the values: sample number = " + str(ImID) + ", voltage = " + str(volt) + 
-              ", current = " + str(curr) + ", timestamp = "
-              + time + " has been stored")
+        print("Inserting (" + str(ImID) + ", " + time + ", " + str(volt) + ", " + str(curr) + ")")
+# =============================================================================
+#         print("Data packet containing the values: sample number = " + str(ImID) + ", voltage = " + str(volt) + 
+#               ", current = " + str(curr) + ", timestamp = "
+#               + time + " has been stored")
+# =============================================================================
         return
     
-    def printDatabase(self):
+    def printImportsTable(self):
         sql = "SELECT * FROM imports"
+        self.cursor.execute(sql)
+        for row in self.cursor:
+            print (row)
+        self.databaseConn.commit()
+        
+    def printMcuCmdsTable(self):
+        sql = "SELECT * FROM mcuCmds"
         self.cursor.execute(sql)
         for row in self.cursor:
             print (row)
@@ -51,11 +61,10 @@ class DatabaseManager(threading.Thread):
         return 
         
     def handshake(self):
-        while(True):
-            sql = "UPDATE mcuCmds SET Handshake = 1 WHERE Handshake = 0;"
-            self.cursor.execute(sql)
-            self.databaseConn.commit()
-            time.sleep(3)
+        sql = "UPDATE mcuCmds SET Handshake = 1 WHERE Handshake = 0;"
+        self.cursor.execute(sql)
+        self.databaseConn.commit()
+        time.sleep(3)
         return
     
     def getCommand(self):
