@@ -9,9 +9,19 @@ class DatabaseManager(threading.Thread):
     def __init__(self, databaseConn):
         threading.Thread.__init__(self)
         self.databaseConn = databaseConn;
-        self.cursor = databaseConn.cursor()
-        self.mcuCommand = ''
+
                             
+    def initDatabase(self):
+        self.cursor = self.databaseConn.cursor()
+        self.mcuCommand = ''
+        self.indexStart = 0
+        
+        sql = "SELECT COUNT(*) FROM imports"
+        self.cursor.execute(sql)
+        self.indexStart = self.cursor.fetchone()[0]       
+        
+        return
+    
     def storeData(self, jsonPacket):
         dataPacket = json.loads(jsonPacket)
         ImID = dataPacket['sampleNum']
@@ -56,8 +66,10 @@ class DatabaseManager(threading.Thread):
             self.databaseConn.commit()
         dataToSend = {}
         dataToSend['command'] = START_COMMAND   
+        dataToSend['sampleNum'] = self.indexStart
         jsonData = json.dumps(dataToSend)
         self.mcuCommand = jsonData
+       # self.mcuCommand = 's'
         return 
         
     def handshake(self):

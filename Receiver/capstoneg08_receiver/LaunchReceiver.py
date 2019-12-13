@@ -14,6 +14,7 @@ def initReceiver():
     print("Connecting to Local Database.")
     conn = pyodbc.connect("Driver={SQL Server};Server=localhost\SQLEXPRESS;Database=master;Trusted_Connection=True")
     dBManager = DatabaseManager(conn)
+    dBManager.initDatabase()
     
     print("Initializing XBee Device.")
     device = XBeeDevice(PORT, BAUD_RATE)

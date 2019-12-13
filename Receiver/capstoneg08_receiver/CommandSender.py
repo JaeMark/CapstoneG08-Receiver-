@@ -35,8 +35,8 @@ class CommandSender(threading.Thread):
             print("Sending data to %s >> %s..." % (self.remote_device.get_64bit_addr(), dataToSend))
             self.device.send_data(self.remote_device, dataToSend)
             print("Success")
-            while(True):
-                threading.Thread(target = self.dBManager.handshake()).start()    
+            #while(True):
+            #    threading.Thread(target = self.dBManager.handshake()).start()    
         finally:
             if self.device is not None and self.device.is_open():
                self.device.close() 
