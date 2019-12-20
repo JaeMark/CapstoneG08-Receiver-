@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import pyodbc
-import json
 import threading
 from digi.xbee.devices import XBeeDevice
 from DatabaseManager import DatabaseManager

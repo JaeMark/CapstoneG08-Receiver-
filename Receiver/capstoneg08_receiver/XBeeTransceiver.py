@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-
 from digi.xbee.exception import TimeoutException
+from SerialMsgParser import SerialMsgParser
 import threading
-import sys
 
 REMOTE_NODE_ID = "XBEE_T"
 
@@ -10,9 +9,10 @@ class XBeeTransceiver(threading.Thread):
     def __init__(self, device, dBManager):
         self.device = device
         self.dBManager = dBManager
-        self.remote_device = ''
         
     def initTransceiver(self):
+        self.mySerialMsgParser = SerialMsgParser(self.dBManager)
+        
         try:
             if self.device is not None and not self.device.is_open():
                 self.device.open()
@@ -48,13 +48,20 @@ class XBeeTransceiver(threading.Thread):
             self.device.flush_queues()
             print("Waiting for data...\n")
             data = ''
+            trailingData = ''
+            msgToParse = ''
             while(True):
                 packet = self.device.read_data()
                 if packet is not None:
                     data = packet.data.decode()
-                    print("From %s >> %s" % (packet.remote_device.get_64bit_addr(),
-                                         data))
-                    #threading.Thread(target = self.dBManager.storeData(jsonPacket.data.decode())).start()  
+                    #print("From %s >> %s" % (packet.remote_device.get_64bit_addr(), data))
+                    data = trailingData + data    
+                    msgToParse = self.mySerialMsgParser.getMsgToParse(data)
+                    trailingData = self.mySerialMsgParser.getTrailingData(data)
+                    #print("The data is: " + data)
+                    #print("The message to parse is: " + msgToParse)
+                    #print("The trailing data is: " + trailingData)
+                    threading.Thread(target = self.mySerialMsgParser.parseMsg(msgToParse)).start()  
         except TimeoutException as to:
             print("Unable to receive data, because ", repr(to))
             if self.device is not None and self.device.is_open():

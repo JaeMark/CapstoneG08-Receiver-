@@ -7,7 +7,7 @@ from DatabaseManager import DatabaseManager
 from XBeeTransceiver import XBeeTransceiver
 
 PORT = "COM3"
-BAUD_RATE = 9600
+BAUD_RATE = 115200
 
 def databaseStoreTest():
     print("============================================================")
