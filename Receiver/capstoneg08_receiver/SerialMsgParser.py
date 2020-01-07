@@ -4,6 +4,7 @@ import threading
 
 class SerialMsgParser(threading.Thread):
     def __init__(self, dBManager):
+        threading.Thread.__init__(self)
         self.dBManager = dBManager
     
     def getTrailingData(self, msg):

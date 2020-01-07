@@ -10,6 +10,7 @@ REMOTE_NODE_ID = "XBEE_T"
 
 class CommandSender(threading.Thread):
     def __init__(self, device, dBManager):
+        threading.Thread.__init__(self)
         self.device = device
         self.dBManager = dBManager
         self.remote_device = ''

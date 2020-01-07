@@ -2,6 +2,7 @@
 import threading
 import json
 import time
+import datetime
 
 START_COMMAND = "START"
 
@@ -25,19 +26,17 @@ class DatabaseManager(threading.Thread):
     def storeData(self, jsonPacket):
         dataPacket = json.loads(jsonPacket)
         ImID = dataPacket['sampleNum']
-        time = dataPacket['time']
+        instant = datetime.datetime.now().isoformat(' ', 'seconds')
         volt = dataPacket['volt']
         curr = dataPacket['curr']
+        micros = dataPacket['micros']
         
-        sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
-        self.cursor.execute(sql, ImID, time, volt, curr, 0)
+     #   sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
+     #   self.cursor.execute(sql, ImID, instant, volt, curr, 0)
+        sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Micros, Processed) VALUES (?, ?, ?, ?, ?,?);"
+        self.cursor.execute(sql, ImID, instant, volt, curr, micros, 0)
         self.databaseConn.commit()
-        print("Inserting (" + str(ImID) + ", " + time + ", " + str(volt) + ", " + str(curr) + ")")
-# =============================================================================
-#         print("Data packet containing the values: sample number = " + str(ImID) + ", voltage = " + str(volt) + 
-#               ", current = " + str(curr) + ", timestamp = "
-#               + time + " has been stored")
-# =============================================================================
+        print("Inserting (" + str(ImID) + ", " + instant + ", " + str(volt) + ", " + str(curr) +  ", " + str(micros) +")")
         return
     
     def printImportsTable(self):
@@ -69,31 +68,14 @@ class DatabaseManager(threading.Thread):
         dataToSend['sampleNum'] = self.indexStart
         jsonData = json.dumps(dataToSend)
         self.mcuCommand = jsonData
-       # self.mcuCommand = 's'
         return 
         
     def handshake(self):
         sql = "UPDATE mcuCmds SET Handshake = 1 WHERE Handshake = 0;"
         self.cursor.execute(sql)
         self.databaseConn.commit()
-        time.sleep(3)
         return
     
     def getCommand(self):
         return self.mcuCommand
                 
-# =============================================================================
-#     def processesCommands(self):
-#         return "START"
-#         sql = "SELECT * FROM COMMAND WHERE Handshake = 1"
-#         self.cursor.execute(sql)
-#         ###
-#         self.databaseConn.commit()
-#         if cmd == 0:
-#             self.handshake(self, RxID)
-#             data = {}
-#             data['cmd'] = cmd
-#             packet = json.dumps(data)
-#             self.MCUCommand = packet
-# =============================================================================
-    

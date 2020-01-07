@@ -31,6 +31,7 @@ def databaseStoreTest():
                            Instant NVARCHAR(255),
                            Volt NVARCHAR(255),
                            Curr NVARCHAR(255),
+                           Millis NVARCHAR(255),
                            Processed int
                            PRIMARY KEY(ImID)
                    )''')
@@ -154,6 +155,7 @@ def initReceiverTest():
                            Instant NVARCHAR(255),
                            Volt NVARCHAR(255),
                            Curr NVARCHAR(255),
+                           Micros NVARCHAR(255),
                            Processed int
                            PRIMARY KEY(ImID)
                    )''')
@@ -167,15 +169,18 @@ def initReceiverTest():
     myTranceiver = XBeeTransceiver(device, dBManager)
     print("Initializing Transceiver Program.")
     myTranceiver.initTransceiver()
-    print("Launching Command Sender Program.")    
-    threading.Thread(target = myTranceiver.runDataSender()).start()
-    print("Launching Receiver Program.")    
-    threading.Thread(target = myTranceiver.runDataReceiver()).start()
+    print("Launching Transceiver Program.")   
+    myTranceiver.start()
+#    threading.Thread(target = myTranceiver.runTransceiver()).start()
+#    print("Launching Command Sender Program.")    
+#    threading.Thread(target = myTranceiver.runDataSender()).start()
+#    print("Launching Receiver Program.")    
+#    threading.Thread(target = myTranceiver.runDataReceiver()).start()
     
     print("\n")
     return
 
 
-databaseStoreTest() 
-databaseReadTest() 
+#databaseStoreTest() 
+#databaseReadTest() 
 initReceiverTest()
