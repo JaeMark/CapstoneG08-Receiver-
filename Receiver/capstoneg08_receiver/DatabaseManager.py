@@ -23,20 +23,13 @@ class DatabaseManager(threading.Thread):
         
         return
     
-    def storeData(self, jsonPacket):
-        dataPacket = json.loads(jsonPacket)
-        ImID = dataPacket['sampleNum']
-        instant = datetime.datetime.now().isoformat(' ', 'seconds')
-        volt = dataPacket['volt']
-        curr = dataPacket['curr']
-        micros = dataPacket['micros']
-        
+    def storeData(self, volt, curr, micros):        
      #   sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Processed) VALUES (?, ?, ?, ?, ?);"
      #   self.cursor.execute(sql, ImID, instant, volt, curr, 0)
-        sql = "INSERT INTO imports (ImID, Instant, Volt, Curr, Micros, Processed) VALUES (?, ?, ?, ?, ?,?);"
-        self.cursor.execute(sql, ImID, instant, volt, curr, micros, 0)
+        sql = "INSERT INTO imports (Volt, Curr, Micros, Processed) VALUES (?, ?, ?, ?);"
+        self.cursor.execute(sql, volt, curr, micros, 0)
         self.databaseConn.commit()
-        print("Inserting (" + str(ImID) + ", " + instant + ", " + str(volt) + ", " + str(curr) +  ", " + str(micros) +")")
+     #   print("Inserting (" + str(ImID) + ", " + instant + ", " + str(volt) + ", " + str(curr) +  ", " + str(micros) +")")
         return
     
     def printImportsTable(self):
@@ -53,7 +46,18 @@ class DatabaseManager(threading.Thread):
             print (row)
         self.databaseConn.commit()
         
-    def searchCommand(self):
+    def checkIfSamplingIsDone(self, numSamples):
+        sql = "SELECT COUNT(*) FROM imports"
+        self.cursor.execute(sql)
+        currentMaxIndex = self.cursor.fetchone()[0]   
+        if((currentMaxIndex % numSamples) == 0):
+            print("All " + str(numSamples) + " samples have been inserted into the imports database."
+                   + " Entering Sleep Mode...")
+            return True
+        else:
+            return False
+        
+    def searchStartCommand(self):
         waitingForStart = True;
         while (waitingForStart):
             sql = "SELECT COUNT(*) FROM mcuCmds WHERE Handshake = 0"
@@ -63,12 +67,7 @@ class DatabaseManager(threading.Thread):
                 # there is a start request
                 waitingForStart = False;
             self.databaseConn.commit()
-        dataToSend = {}
-        dataToSend['command'] = START_COMMAND   
-        dataToSend['sampleNum'] = self.indexStart
-        jsonData = json.dumps(dataToSend)
-        self.mcuCommand = jsonData
-        return 
+        return True
         
     def handshake(self):
         sql = "UPDATE mcuCmds SET Handshake = 1 WHERE Handshake = 0;"

@@ -150,15 +150,15 @@ def initReceiverTest():
     
     print("Creating Test Table.")
     cursor.execute('''
-                   CREATE TABLE imports (
-                           ImID bigint NOT NULL,
-                           Instant NVARCHAR(255),
-                           Volt NVARCHAR(255),
-                           Curr NVARCHAR(255),
-                           Micros NVARCHAR(255),
-                           Processed int
-                           PRIMARY KEY(ImID)
-                   )''')
+                   CREATE TABLE imports(
+	                       ImID BIGINT IDENTITY NOT NULL,
+	                       Instant DATETIME2 DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	                       Volt NVARCHAR(255) NOT NULL,
+	                       Curr NVARCHAR(255) NOT NULL,
+                           Micros bigint,
+	                       Processed BIT DEFAULT 0 NOT NULL,
+	                       PRIMARY KEY (ImID)
+                   );''')
     conn.commit() 
     
     dBManager = DatabaseManager(conn)
@@ -166,11 +166,12 @@ def initReceiverTest():
         
     print("Initializing XBee Device.")
     device = XBeeDevice(PORT, BAUD_RATE)
-    myTranceiver = XBeeTransceiver(device, dBManager)
+    myTransceiver = XBeeTransceiver(device, dBManager)
     print("Initializing Transceiver Program.")
-    myTranceiver.initTransceiver()
-    print("Launching Transceiver Program.")   
-    myTranceiver.start()
+    myTransceiver.initTransceiver()
+    print("Launching Transceiver Program.\n")   
+    myTransceiver.runTransceiver()
+    #myTranceiver.start()
 #    threading.Thread(target = myTranceiver.runTransceiver()).start()
 #    print("Launching Command Sender Program.")    
 #    threading.Thread(target = myTranceiver.runDataSender()).start()
