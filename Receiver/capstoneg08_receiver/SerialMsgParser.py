@@ -7,6 +7,11 @@ DEFAULT_COMMAND = 0
 START_COMMAND = 1
 SLEEP_COMMAND = 2
 
+SAMPLE_NUM = 512
+TRANS_DELIM = 16
+SMALL_TRANS_DELAY = 25
+BIG_TRANS_DELAY = 100
+
 class SerialMsgParser(threading.Thread):
     def __init__(self, dBManager):
         threading.Thread.__init__(self)
@@ -48,7 +53,11 @@ class SerialMsgParser(threading.Thread):
     
     def getStartCommand(self):
         dataToSend = {}
-        dataToSend['command'] = START_COMMAND   
+        dataToSend['command'] = START_COMMAND  
+        dataToSend['sampleNum'] = SAMPLE_NUM
+        dataToSend['delim'] = TRANS_DELIM
+        dataToSend['smallDelay'] = SMALL_TRANS_DELAY
+        dataToSend['bigDelay'] = BIG_TRANS_DELAY
         #dataToSend['sampleNum'] = self.indexStart
         jsonData = json.dumps(dataToSend)
         return jsonData
