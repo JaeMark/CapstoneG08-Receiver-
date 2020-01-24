@@ -9,6 +9,7 @@ REMOTE_NODE_ID = "XBEE_T"
 
 DEFAULT_COMMAND = 0
 START_RECEIVING_COMMAND = 1
+WAIT_FOR_WAKE_UP_COMMAND = 2
 
 DEFAULT_NUM_SAMPLES = 0
 
@@ -47,10 +48,12 @@ class XBeeTransceiver(threading.Thread):
         while(True):
             if TransCommand is DEFAULT_COMMAND:  
                 try:
-                    if self.dBManager.searchStartCommand():
-                        dataToSend = self.mySerialMsgParser.getStartCommand()
+                    if not self.mySerialMsgParser.getStartCommand():
+                        self.dBManager.searchStartCommand()
+                    dataToSend = self.mySerialMsgParser.getStartCommand()
                     print("Sending data %s..." % (dataToSend))
                     self.device.send_data_broadcast(dataToSend)
+                    #self.device.flush_queues
                 except TimeoutException as to:
                     print("Unable to send command, because ", repr(to))
                     if self.device is not None and self.device.is_open():
@@ -94,14 +97,31 @@ class XBeeTransceiver(threading.Thread):
                             #print("The message to parse is: " + msgToParse)
                             #print("The trailing data is: " + trailingData)
                             threading.Thread(target = self.mySerialMsgParser.parseReadingData(msgToParse, numSamples)).start() 
-                            if(self.mySerialMsgParser.getSampleNumParsed() == numSamples):
+                            if(self.mySerialMsgParser.getSampleNumParsed() % numSamples == 0):
                                 dataToSend = self.mySerialMsgParser.getSleepCommand()
-                                print("Parsed all sample data. Time to sleep!\nSending sleep command %s..." % (dataToSend))
+                                print("Parsed all sample data. Time to sleep!\nSending sleep command %s...\n" % (dataToSend))
                                 self.device.send_data_broadcast(dataToSend)   
                                 self.mySerialMsgParser.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
+                                TransCommand = WAIT_FOR_WAKE_UP_COMMAND
+                                break                            
+                except TimeoutException as to:
+                    print("Unable to receive data, because ", repr(to))
+                    if self.device is not None and self.device.is_open():
+                        self.device.close()
+            elif TransCommand is WAIT_FOR_WAKE_UP_COMMAND:
+               try: 
+                    #self.device.flush_queues()
+                    print("The Transceiver is now waiting for wake up command...\n")
+                    while(True):
+                        threading.Thread(target = self.dBManager.handshake()).start()    
+                        packet = self.device.read_data()
+                        if packet is not None:
+                            decodedData = packet.data.decode() 
+                            if self.mySerialMsgParser.parseWakeUpCommand(decodedData):
+                                print("The Teensy is now awake!\n")
                                 TransCommand = DEFAULT_COMMAND
                                 break
-                except TimeoutException as to:
+               except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()

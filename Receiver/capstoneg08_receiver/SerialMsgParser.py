@@ -6,12 +6,15 @@ import json
 DEFAULT_COMMAND = 0
 START_COMMAND = 1
 SLEEP_COMMAND = 2
+WAKE_UP_COMMAND = 3
 
-SAMPLE_NUM = 512
+SAMPLE_NUM = 32
 TRANS_DELIM = 16
-SMALL_TRANS_DELAY = 25
-BIG_TRANS_DELAY = 100
+SMALL_TRANS_DELAY = 250
+BIG_TRANS_DELAY = 750
 
+#SLEEP_TIME = 3600000
+SLEEP_TIME = 60000
 class SerialMsgParser(threading.Thread):
     def __init__(self, dBManager):
         threading.Thread.__init__(self)
@@ -47,6 +50,7 @@ class SerialMsgParser(threading.Thread):
     def getSleepCommand(self):
         dataToSend = {}
         dataToSend['command'] = SLEEP_COMMAND   
+        dataToSend['sleepTime'] = SLEEP_TIME  
         jsonData = json.dumps(dataToSend)
         self.parsedAllSamples = False
         return jsonData
@@ -61,7 +65,14 @@ class SerialMsgParser(threading.Thread):
         #dataToSend['sampleNum'] = self.indexStart
         jsonData = json.dumps(dataToSend)
         return jsonData
-    
+
+    def parseWakeUpCommand(self, msg):
+        data = json.loads(msg)
+        wakeUpCommand = data['command']
+        if(wakeUpCommand == WAKE_UP_COMMAND):
+            return True
+        return False
+                
     def parseReadingData(self, msg, numSamples):
         jsonIndexStart = 0
         jsonIndexEnd = 0
@@ -78,10 +89,12 @@ class SerialMsgParser(threading.Thread):
             jsonData = msg[jsonIndexStart:jsonIndexEnd+1]
             #print("The json index end is: " +  str(jsonIndexEnd))
             #print("The json data is: " + jsonData)
-            if jsonData is not None:
+            if jsonData:
+                #print("The json data is: " + jsonData)
                 data = json.loads(jsonData)
                 #ImID = dataPacket['sampleNum']
                 #instant = datetime.datetime.now().isoformat(' ', 'seconds')
+                #print("The json data is: " + jsonData)
                 volt = data['volt']
                 curr = data['curr']
                 micros = data['micros']
