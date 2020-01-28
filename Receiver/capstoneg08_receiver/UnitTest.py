@@ -5,6 +5,15 @@ import threading
 from digi.xbee.devices import XBeeDevice
 from DatabaseManager import DatabaseManager
 from XBeeTransceiver import XBeeTransceiver
+from SerialMsgManager import SerialMsgManager
+
+SAMPLE_NUM = 32
+TRANS_DELIM = 16
+SMALL_TRANS_DELAY = 500
+BIG_TRANS_DELAY = 1000
+
+#SLEEP_TIME = 3600000
+SLEEP_TIME = 60000
 
 PORT = "COM3"
 BAUD_RATE = 115200
@@ -126,22 +135,6 @@ def initReceiverTest():
     conn = pyodbc.connect("Driver={SQL Server};Server=localhost\SQLEXPRESS;Database=master;Trusted_Connection=True")
     
     cursor = conn.cursor()
-    cursor.execute('''
-                   DROP TABLE mcuCmds;
-                   ''')
-    conn.commit()
-    cursor.execute('''
-                   CREATE TABLE mcuCmds (
-                           RxID bigint NOT NULL,
-                           Handshake BIT,
-                           PRIMARY KEY(RxID)
-                   )''')
-    conn.commit()
-    cursor.execute('''
-                   INSERT INTO mcuCmds (RxID, Handshake)
-                   VALUES (0, 0), (1, 0), (2, 1)
-                   ''')
-    conn.commit()
     
     cursor.execute('''
                    DROP TABLE imports;
@@ -155,28 +148,22 @@ def initReceiverTest():
 	                       Instant DATETIME2 DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	                       Volt NVARCHAR(255) NOT NULL,
 	                       Curr NVARCHAR(255) NOT NULL,
-                           Micros bigint,
 	                       Processed BIT DEFAULT 0 NOT NULL,
 	                       PRIMARY KEY (ImID)
                    );''')
     conn.commit() 
     
-    dBManager = DatabaseManager(conn)
-    dBManager.initDatabase()
+    myDBManager = DatabaseManager(conn)
+    
+    mySerialMsgManager = SerialMsgManager(myDBManager, SAMPLE_NUM, TRANS_DELIM, SMALL_TRANS_DELAY, BIG_TRANS_DELAY, SLEEP_TIME)
         
     print("Initializing XBee Device.")
     device = XBeeDevice(PORT, BAUD_RATE)
-    myTransceiver = XBeeTransceiver(device, dBManager)
+    myTransceiver = XBeeTransceiver(device, myDBManager, mySerialMsgManager)
     print("Initializing Transceiver Program.")
     myTransceiver.initTransceiver()
     print("Launching Transceiver Program.\n")   
     myTransceiver.runTransceiver()
-    #myTranceiver.start()
-#    threading.Thread(target = myTranceiver.runTransceiver()).start()
-#    print("Launching Command Sender Program.")    
-#    threading.Thread(target = myTranceiver.runDataSender()).start()
-#    print("Launching Receiver Program.")    
-#    threading.Thread(target = myTranceiver.runDataReceiver()).start()
     
     print("\n")
     return

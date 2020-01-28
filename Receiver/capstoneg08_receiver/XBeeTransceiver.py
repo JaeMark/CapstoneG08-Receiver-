@@ -1,30 +1,30 @@
 # -*- coding: utf-8 -*-
 from digi.xbee.exception import TimeoutException
-from SerialMsgParser import SerialMsgParser
 import threading
 import time
-import json
 
-REMOTE_NODE_ID = "XBEE_T"
-
+#==============================================================================
+# CONSTANT VARIABLES
+#==============================================================================
 DEFAULT_COMMAND = 0
 START_RECEIVING_COMMAND = 1
 WAIT_FOR_WAKE_UP_COMMAND = 2
 
-DEFAULT_NUM_SAMPLES = 0
+REMOTE_NODE_ID = "XBEE_T"
 
+DEFAULT_NUM_SAMPLES = 0
 TIMEOUT_T = 1 # time out after 1 min
 
 class XBeeTransceiver(threading.Thread):
-    def __init__(self, device, dBManager):
-       # threading.Thread.__init__(self)
+    def __init__(self, device, dBManager, SerialMsgManager):
         self.device = device
-        self.dBManager = dBManager
+        self.myDBManager = dBManager
+        self.mySerialMsgManager = SerialMsgManager
         
     def initTransceiver(self):
-        self.mySerialMsgParser = SerialMsgParser(self.dBManager)
-        
+        # initialize the transceiver program
         try:
+            # open XBee device
             if self.device is not None and not self.device.is_open():
                 self.device.open()
                 self.device.flush_queues()
@@ -42,82 +42,83 @@ class XBeeTransceiver(threading.Thread):
                 self.device.close()
 
     def runTransceiver(self):
+        # run the transceiver program
         TransCommand = DEFAULT_COMMAND
         numSamples = DEFAULT_NUM_SAMPLES
         
         while(True):
             if TransCommand is DEFAULT_COMMAND:  
                 try:
-                    if not self.mySerialMsgParser.getStartCommand():
-                        self.dBManager.searchStartCommand()
-                    dataToSend = self.mySerialMsgParser.getStartCommand()
-                    print("Sending data %s..." % (dataToSend))
-                    self.device.send_data_broadcast(dataToSend)
-                    #self.device.flush_queues
+                    # get the start command from the database, then send it
+                    self.device.flush_queues
+                    startCommandToSend = self.mySerialMsgManager.getStartCommand()
+                    print("Sending data %s..." % (startCommandToSend))
+                    self.device.send_data_broadcast(startCommandToSend)
                 except TimeoutException as to:
                     print("Unable to send command, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()         
-                try: 
-                    #self.device.flush_queues()
+                try:
+                    # wait for a notification that the microcontroller has received the start command
                     timeout = time.monotonic() + 60 * TIMEOUT_T 
                     while time.monotonic() < timeout:
                         packet = self.device.read_data()
                         if packet is not None:
-                                data = packet.data.decode()
-                                print("The handshake data is: " + data)
-                                dataPacket = json.loads(data)
-                                TransCommand = dataPacket["command"]
-                                numSamples  =  dataPacket["sampleNum"]
-                                #self.mySerialMsgParser.setSampleNumtoParse(self, numSamples)
-                                break
+                            # the handshake has been received
+                            data = packet.data.decode()
+                            print("The handshake data is: " + data)
+                            TransCommand, numSamples = self.mySerialMsgManager.parseHandshake(data)
+                            break
                 except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()
                 if TransCommand is not START_RECEIVING_COMMAND:    
-                        print("There was no response from the remote device. Resending command...")
+                    # the handshake was not received; resend the start command
+                    print("There was no response from the remote device. Resending command...")
+                    
             elif TransCommand is START_RECEIVING_COMMAND:                    
                 try: 
-                    #self.device.flush_queues()
                     print("\nThe Transceiver is now waiting for data...\n")
                     data = ''
                     trailingData = ''
                     msgToParse = ''
                     while(True):
-                        threading.Thread(target = self.dBManager.handshake()).start()    
+                        # receive samples from the microcontroller
                         packet = self.device.read_data()
                         if packet is not None:
                             decodedData = packet.data.decode()
-                            #print("From %s >> %s" % (packet.remote_device.get_64bit_addr(), data))
                             data = trailingData + decodedData   
-                            msgToParse = self.mySerialMsgParser.getMsgToParse(data)
-                            trailingData = self.mySerialMsgParser.getTrailingData(data)
+                            msgToParse = self.mySerialMsgManager.getMsgToParse(data)
+                            trailingData = self.mySerialMsgManager.getTrailingData(data)
                             #print("The data is: " + data)
                             #print("The message to parse is: " + msgToParse)
                             #print("The trailing data is: " + trailingData)
-                            threading.Thread(target = self.mySerialMsgParser.parseReadingData(msgToParse, numSamples)).start() 
-                            if(self.mySerialMsgParser.getSampleNumParsed() % numSamples == 0):
-                                dataToSend = self.mySerialMsgParser.getSleepCommand()
-                                print("Parsed all sample data. Time to sleep!\nSending sleep command %s...\n" % (dataToSend))
-                                self.device.send_data_broadcast(dataToSend)   
-                                self.mySerialMsgParser.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
+                            threading.Thread(target = self.mySerialMsgManager.parseReadingData(msgToParse, numSamples)).start() 
+                            if(self.mySerialMsgManager.getSampleNumParsed() == numSamples):
+                                # all samples have been received; send a sleep command
+                                sleepCommandToSend = self.mySerialMsgManager.getSleepCommand()
+                                print("Parsed all sample data. Time to sleep!\nSending sleep command %s...\n" % (sleepCommandToSend))
+                                self.device.send_data_broadcast(sleepCommandToSend)   
+                                self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
                                 TransCommand = WAIT_FOR_WAKE_UP_COMMAND
+                                self.device.flush_queues
                                 break                            
                 except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()
+                        
             elif TransCommand is WAIT_FOR_WAKE_UP_COMMAND:
                try: 
-                    #self.device.flush_queues()
                     print("The Transceiver is now waiting for wake up command...\n")
                     while(True):
-                        threading.Thread(target = self.dBManager.handshake()).start()    
+                        # wait until the microcontroller is awake  
                         packet = self.device.read_data()
                         if packet is not None:
                             decodedData = packet.data.decode() 
-                            if self.mySerialMsgParser.parseWakeUpCommand(decodedData):
+                            if self.mySerialMsgManager.parseWakeUpCommand(decodedData):
+                                # received the wake up handshake
                                 print("The Teensy is now awake!\n")
                                 TransCommand = DEFAULT_COMMAND
                                 break
@@ -125,114 +126,3 @@ class XBeeTransceiver(threading.Thread):
                     print("Unable to receive data, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()
-                
-#    def runTransceiver(self):
-#        TransCommand = DEFAULT_COMMAND
-#        numSamples = DEFAULT_NUM_SAMPLES
-#        
-#        while(TransCommand != START_RECEIVING_COMMAND):
-#            try:
-#                if self.dBManager.searchStartCommand():
-#                    dataToSend = self.mySerialMsgParser.getStartCommand()
-#                print("Sending data %s..." % (dataToSend))
-#                self.device.send_data_broadcast(dataToSend)
-#            except TimeoutException as to:
-#                print("Unable to send command, because ", repr(to))
-#                if self.device is not None and self.device.is_open():
-#                    self.device.close()
-#            
-#            try: 
-#                #self.device.flush_queues()
-#                timeout = time.monotonic() + 60 * 5 # timeout afer 30 minutes
-#                while time.monotonic() < timeout:
-#                    packet = self.device.read_data()
-#                    if packet is not None:
-#                            data = packet.data.decode()
-#                            print("The handshake data is: " + data)
-#                            dataPacket = json.loads(data)
-#                            TransCommand = dataPacket["command"]
-#                            numSamples  =  dataPacket["sampleNum"]
-#                            #self.mySerialMsgParser.setSampleNumtoParse(self, numSamples)
-#                            break
-#            except TimeoutException as to:
-#                print("Unable to receive data, because ", repr(to))
-#                if self.device is not None and self.device.is_open():
-#                    self.device.close()
-#                    
-#            if(TransCommand == DEFAULT_COMMAND):
-#                print("There was no response from the remote device. Resending command...")
-#                                
-#        try: 
-#            #self.device.flush_queues()
-#            print("\nThe Transceiver is now waiting for data...\n")
-#            data = ''
-#            trailingData = ''
-#            msgToParse = ''
-#            while(True):
-#                threading.Thread(target = self.dBManager.handshake()).start()    
-#                packet = self.device.read_data()
-#                if packet is not None:
-#                    decodedData = packet.data.decode()
-#                    #print("From %s >> %s" % (packet.remote_device.get_64bit_addr(), data))
-#                    data = trailingData + decodedData   
-#                    msgToParse = self.mySerialMsgParser.getMsgToParse(data)
-#                    trailingData = self.mySerialMsgParser.getTrailingData(data)
-#                    #print("The data is: " + data)
-#                    #print("The message to parse is: " + msgToParse)
-#                    #print("The trailing data is: " + trailingData)
-#                    threading.Thread(target = self.mySerialMsgParser.parseReadingData(msgToParse, numSamples)).start() 
-#                    if(self.mySerialMsgParser.getSampleNumParsed() == numSamples):
-#                        dataToSend = self.mySerialMsgParser.getSleepCommand()
-#                        print("Parsed all sample data. Time to sleep!\nSending sleep command %s..." % (dataToSend))
-#                        self.device.send_data_broadcast(dataToSend)   
-#                        self.mySerialMsgParser.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
-#        except TimeoutException as to:
-#            print("Unable to receive data, because ", repr(to))
-#            if self.device is not None and self.device.is_open():
-#                self.device.close()
-#        finally:
-#            if self.device is not None and self.device.is_open():
-#                self.device.close()           
-#    def runDataSender(self):
-#        try:
-#            threading.Thread(target = self.dBManager.searchCommand()).start()
-#            dataToSend = self.dBManager.getCommand()
-#            print("Sending data %s..." % (dataToSend))
-#            self.device.send_data_broadcast(dataToSend)
-#            print("Success")
-#            #while(True):
-#            #    threading.Thread(target = self.dBManager.handshake()).start()    
-#        finally:
-#        #    if self.device is not None and self.device.is_open():
-#        #       self.device.close() 
-#            return
-#    
-#    def runDataReceiver(self):
-#        try: 
-#            self.device.flush_queues()
-#            print("Waiting for data...\n")
-#            data = ''
-#            trailingData = ''
-#            msgToParse = ''
-#            while(True):
-#                packet = self.device.read_data()
-#                if packet is not None:
-#                    data = packet.data.decode()
-#                    #print("From %s >> %s" % (packet.remote_device.get_64bit_addr(), data))
-#                    data = trailingData + data    
-#                    msgToParse = self.mySerialMsgParser.getMsgToParse(data)
-#                    trailingData = self.mySerialMsgParser.getTrailingData(data)
-#                    #print("The data is: " + data)
-#                    #print("The message to parse is: " + msgToParse)
-#                    #print("The trailing data is: " + trailingData)
-#                    threading.Thread(target = self.mySerialMsgParser.parseMsg(msgToParse)).start()  
-#        except TimeoutException as to:
-#            print("Unable to receive data, because ", repr(to))
-#            if self.device is not None and self.device.is_open():
-#                self.device.close()
-#        finally:
-#            if self.device is not None and self.device.is_open():
-#                self.device.close()
-                
-
-    
