@@ -7,7 +7,7 @@ from DatabaseManager import DatabaseManager
 from XBeeTransceiver import XBeeTransceiver
 from SerialMsgManager import SerialMsgManager
 
-SAMPLE_NUM = 32
+SAMPLE_NUM = 2048
 TRANS_DELIM = 16
 SMALL_TRANS_DELAY = 500
 BIG_TRANS_DELAY = 1000
