@@ -1,20 +1,19 @@
 # -*- coding: utf-8 -*-
-
 import threading
 import json
 
-#==============================================================================
+#===============================================================
 # CONSTANT VARIABLES
-#==============================================================================
+#===============================================================
 DEFAULT_COMMAND = 0
 START_COMMAND = 1
 SLEEP_COMMAND = 2
 WAKE_UP_COMMAND = 3
 
 class SerialMsgManager(threading.Thread):
-    def __init__(self, dBManager, sample_num, trans_delim, small_trans_delay, big_trans_delay, sleep_time):
+    def __init__(self, myDBManager, sample_num, trans_delim, small_trans_delay, big_trans_delay, sleep_time):
         threading.Thread.__init__(self)
-        self.dBManager = dBManager
+        self.myDBManager = myDBManager
         self.sample_num = sample_num
         self.trans_delim = trans_delim
         self.small_trans_delay = small_trans_delay
@@ -43,6 +42,11 @@ class SerialMsgManager(threading.Thread):
     def setSampleNumToParse(self, sampleNum):
         # set the the number of samples to be parsed
         self.sampleParsed == sampleNum
+        return 
+    
+    def deleteSampleParsed(self, sampleNum):
+        # set the the number of samples to be parsed
+        self.myDBManager.deleteTopRow(sampleNum)
         return 
     
     def getSampleNumParsed(self):
@@ -100,7 +104,7 @@ class SerialMsgManager(threading.Thread):
                 volt = data['volt']
                 curr = data['curr']
                 # store the data sample in the database
-                threading.Thread(target = self.dBManager.storeData(volt, curr)).start()
+                self.myDBManager.storeData(volt, curr)
                 self.sampleParsed = data['sampleNum']
             jsonIndexStart = jsonIndexEnd+1   
         return

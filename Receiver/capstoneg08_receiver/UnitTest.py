@@ -8,8 +8,8 @@ from XBeeTransceiver import XBeeTransceiver
 from SerialMsgManager import SerialMsgManager
 
 SAMPLE_NUM = 2048
-TRANS_DELIM = 16
-SMALL_TRANS_DELAY = 500
+TRANS_DELIM = 8
+SMALL_TRANS_DELAY = 425
 BIG_TRANS_DELAY = 1000
 
 #SLEEP_TIME = 3600000
@@ -17,6 +17,8 @@ SLEEP_TIME = 600000
 
 PORT = "COM3"
 BAUD_RATE = 115200
+
+DATABASE_STRING = "Driver={SQL Server};Server=localhost\SQLEXPRESS;Database=master;Trusted_Connection=True"
 
 def databaseStoreTest():
     print("============================================================")
@@ -132,34 +134,16 @@ def initReceiverTest():
     print("WIRELESS COMMUNICATION TEST")
     print("============================================================")
     print("Connecting to Local Database.")
-    conn = pyodbc.connect("Driver={SQL Server};Server=localhost\SQLEXPRESS;Database=master;Trusted_Connection=True")
     
-    cursor = conn.cursor()
-    
-    cursor.execute('''
-                   DROP TABLE imports;
-                   ''')
-    conn.commit()
-    
-    print("Creating Test Table.")
-    cursor.execute('''
-                   CREATE TABLE imports(
-	                       ImID BIGINT IDENTITY NOT NULL,
-	                       Instant DATETIME2 DEFAULT CURRENT_TIMESTAMP NOT NULL,
-	                       Volt NVARCHAR(255) NOT NULL,
-	                       Curr NVARCHAR(255) NOT NULL,
-	                       Processed BIT DEFAULT 0 NOT NULL,
-	                       PRIMARY KEY (ImID)
-                   );''')
-    conn.commit() 
-    
-    myDBManager = DatabaseManager(conn)
+    myDBManager = DatabaseManager(DATABASE_STRING)
+    myDBManager.dropImportsTable()
+    myDBManager.createImportsTable()
     
     mySerialMsgManager = SerialMsgManager(myDBManager, SAMPLE_NUM, TRANS_DELIM, SMALL_TRANS_DELAY, BIG_TRANS_DELAY, SLEEP_TIME)
         
     print("Initializing XBee Device.")
-    device = XBeeDevice(PORT, BAUD_RATE)
-    myTransceiver = XBeeTransceiver(device, myDBManager, mySerialMsgManager)
+    device = XBeeDevice(PORT, BAUD_RATE, 8, 1, 'N', 0, 0.1)
+    myTransceiver = XBeeTransceiver(device, mySerialMsgManager)
     print("Initializing Transceiver Program.")
     myTransceiver.initTransceiver()
     print("Launching Transceiver Program.\n")   

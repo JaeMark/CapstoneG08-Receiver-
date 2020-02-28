@@ -3,23 +3,20 @@ from digi.xbee.exception import TimeoutException
 import threading
 import time
 
-#==============================================================================
+#===============================================================
 # CONSTANT VARIABLES
-#==============================================================================
+#===============================================================
 DEFAULT_COMMAND = 0
 START_RECEIVING_COMMAND = 1
 WAIT_FOR_WAKE_UP_COMMAND = 2
 
-REMOTE_NODE_ID = 'XBEE_T'
-
 DEFAULT_NUM_SAMPLES = 0
-HANDSHAKE_TIMEOUT = 120 #s
+HANDSHAKE_TIMEOUT = 60 #s
 SAMPLE_TIMEOUT = 60 #s
 
 class XBeeTransceiver(threading.Thread):
-    def __init__(self, device, dBManager, SerialMsgManager):
+    def __init__(self, device, SerialMsgManager):
         self.device = device
-        self.myDBManager = dBManager
         self.mySerialMsgManager = SerialMsgManager
         
     def initTransceiver(self):
@@ -28,14 +25,7 @@ class XBeeTransceiver(threading.Thread):
             # open XBee device
             if self.device is not None and not self.device.is_open():
                 self.device.open()
-                self.device.flush_queues()
-            # Obtain the remote XBee device from the XBee network.
-#            xbee_network = self.device.get_network()
-#            self.remote_device = xbee_network.discover_device(REMOTE_NODE_ID)
-#            if self.remote_device is None:
-#                print("Could not find the remote device")
-#                exit(1)
-             
+                self.device.flush_queues()                         
         except TimeoutException as to:
             print("Unable to get device from Xbee network, because ", repr(to))
             if self.device is not None and self.device.is_open():
@@ -54,8 +44,6 @@ class XBeeTransceiver(threading.Thread):
                     startCommandToSend = self.mySerialMsgManager.getStartCommand()
                     print("Sending data %s..." % (startCommandToSend))
                     self.device.send_data_broadcast(startCommandToSend)
-                    #print("Sending data to %s >> %s..." % (remote_device.get_64bit_addr(), startCommandToSend))
-                    #self.device.send_data(self.remote_device, startCommandToSend)
                 except TimeoutException as to:
                     print("Unable to send command, because ", repr(to))
                     if self.device is not None and self.device.is_open():
@@ -94,23 +82,25 @@ class XBeeTransceiver(threading.Thread):
                             data = trailingData + decodedData   
                             msgToParse = self.mySerialMsgManager.getMsgToParse(data)
                             trailingData = self.mySerialMsgManager.getTrailingData(data)
-                            #print("The data is: " + data)
-                            #print("The message to parse is: " + msgToParse)
-                            #print("The trailing data is: " + trailingData)
                             threading.Thread(target = self.mySerialMsgManager.parseReadingData(msgToParse, numSamples)).start() 
                             lastSampleTime = time.monotonic()
-                        elif self.mySerialMsgManager.getSampleNumParsed() == numSamples:
+                        
+                        if self.mySerialMsgManager.getSampleNumParsed() == numSamples:
                             # all samples have been received; send a sleep command
                             sleepCommandToSend = self.mySerialMsgManager.getSleepCommand()
                             print("Parsed all sample data. Time to sleep!\nSending sleep command %s...\n" % (sleepCommandToSend))
-                            #self.device.send_data_broadcast(sleepCommandToSend)   
+                            self.device.send_data_broadcast(sleepCommandToSend)   
                             self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
                             TransCommand = WAIT_FOR_WAKE_UP_COMMAND
                             self.device.flush_queues
                             break  
                         elif time.monotonic() > lastSampleTime + SAMPLE_TIMEOUT:
+                            # timeout has occured; restart transmission
                             print("Data sample was not received within the expected time. Restarting transmission...")
                             TransCommand = DEFAULT_COMMAND
+                            self.mySerialMsgManager.deleteSampleParsed(numSamples)
+                            self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
+                            self.device.flush_queues
                             break
                 except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
