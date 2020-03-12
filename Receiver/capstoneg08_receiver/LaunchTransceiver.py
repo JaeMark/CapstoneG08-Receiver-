@@ -28,7 +28,7 @@ BIG_TRANS_DELAY = 1000
 SLEEP_TIME = 3600000
 
 PORT = "COM3"
-BAUD_RATE = 115200
+BAUD_RATE = 57600
 
 def initTransceiver():
     print("========================================================")

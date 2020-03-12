@@ -7,13 +7,14 @@ from DatabaseManager import DatabaseManager
 from XBeeTransceiver import XBeeTransceiver
 from SerialMsgManager import SerialMsgManager
 
-SAMPLE_NUM = 2048
-TRANS_DELIM = 8
-SMALL_TRANS_DELAY = 425
-BIG_TRANS_DELAY = 1000
+SAMPLE_NUM = 10
+TRANS_DELIM = 4
+SMALL_TRANS_DELAY = 400
+BIG_TRANS_DELAY = 400
 
 #SLEEP_TIME = 3600000
-SLEEP_TIME = 600000
+SLEEP_TIME = 150000
+
 
 PORT = "COM3"
 BAUD_RATE = 115200
@@ -142,7 +143,7 @@ def initReceiverTest():
     mySerialMsgManager = SerialMsgManager(myDBManager, SAMPLE_NUM, TRANS_DELIM, SMALL_TRANS_DELAY, BIG_TRANS_DELAY, SLEEP_TIME)
         
     print("Initializing XBee Device.")
-    device = XBeeDevice(PORT, BAUD_RATE, 8, 1, 'N', 0, 0.1)
+    device = XBeeDevice(PORT, BAUD_RATE)
     myTransceiver = XBeeTransceiver(device, mySerialMsgManager)
     print("Initializing Transceiver Program.")
     myTransceiver.initTransceiver()

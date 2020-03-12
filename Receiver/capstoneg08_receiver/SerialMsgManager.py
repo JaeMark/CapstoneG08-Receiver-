@@ -41,7 +41,7 @@ class SerialMsgManager(threading.Thread):
     
     def setSampleNumToParse(self, sampleNum):
         # set the the number of samples to be parsed
-        self.sampleParsed == sampleNum
+        self.sampleParsed = sampleNum
         return 
     
     def deleteSampleParsed(self, sampleNum):
@@ -88,7 +88,7 @@ class SerialMsgManager(threading.Thread):
             return True
         return False
                 
-    def parseReadingData(self, msg, numSamples):
+    def parseReadingData(self, msg):
         # parse the data smaples received
         jsonIndexStart = 0
         jsonIndexEnd = 0

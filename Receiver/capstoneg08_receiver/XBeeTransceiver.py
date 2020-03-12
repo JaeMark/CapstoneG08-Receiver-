@@ -11,8 +11,8 @@ START_RECEIVING_COMMAND = 1
 WAIT_FOR_WAKE_UP_COMMAND = 2
 
 DEFAULT_NUM_SAMPLES = 0
-HANDSHAKE_TIMEOUT = 60 #s
-SAMPLE_TIMEOUT = 60 #s
+HANDSHAKE_TIMEOUT = 30 #s
+SAMPLE_TIMEOUT = 30 #s
 
 class XBeeTransceiver(threading.Thread):
     def __init__(self, device, SerialMsgManager):
@@ -33,11 +33,11 @@ class XBeeTransceiver(threading.Thread):
 
     def runTransceiver(self):
         # run the transceiver program
-        TransCommand = DEFAULT_COMMAND
-        numSamples = DEFAULT_NUM_SAMPLES
+        transceiverCmd = DEFAULT_COMMAND
+        numSamplesToReceive = DEFAULT_NUM_SAMPLES
         
         while(True):
-            if TransCommand is DEFAULT_COMMAND:  
+            if transceiverCmd is DEFAULT_COMMAND:  
                 try:
                     # get the start command from the database, then send it
                     self.device.flush_queues
@@ -57,17 +57,17 @@ class XBeeTransceiver(threading.Thread):
                             # the handshake has been received
                             data = packet.data.decode()
                             print("The handshake data is: " + data)
-                            TransCommand, numSamples = self.mySerialMsgManager.parseHandshake(data)
+                            transceiverCmd, numSamplesToReceive = self.mySerialMsgManager.parseHandshake(data)
                             break
                 except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
                     if self.device is not None and self.device.is_open():
                         self.device.close()
-                if TransCommand is not START_RECEIVING_COMMAND:    
+                if transceiverCmd is not START_RECEIVING_COMMAND:    
                     # the handshake was not received; resend the start command
                     print("There was no response from the remote device. Resending start command...")
                     
-            elif TransCommand is START_RECEIVING_COMMAND:                    
+            elif transceiverCmd is START_RECEIVING_COMMAND:                    
                 try: 
                     print("\nThe Transceiver is now waiting for data...\n")
                     data = ''
@@ -77,28 +77,27 @@ class XBeeTransceiver(threading.Thread):
                     while(True):
                         # receive samples from the microcontroller
                         packet = self.device.read_data()
-                        if packet is not None:
+                        if packet is not None:                           
                             decodedData = packet.data.decode()
                             data = trailingData + decodedData   
                             msgToParse = self.mySerialMsgManager.getMsgToParse(data)
                             trailingData = self.mySerialMsgManager.getTrailingData(data)
-                            threading.Thread(target = self.mySerialMsgManager.parseReadingData(msgToParse, numSamples)).start() 
-                            lastSampleTime = time.monotonic()
-                        
-                        if self.mySerialMsgManager.getSampleNumParsed() == numSamples:
+                            threading.Thread(target = self.mySerialMsgManager.parseReadingData(msgToParse)).start() 
+                            lastSampleTime = time.monotonic()                        
+                        if self.mySerialMsgManager.getSampleNumParsed() == numSamplesToReceive:
                             # all samples have been received; send a sleep command
+                            self.device.flush_queues
+                            self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
                             sleepCommandToSend = self.mySerialMsgManager.getSleepCommand()
                             print("Parsed all sample data. Time to sleep!\nSending sleep command %s...\n" % (sleepCommandToSend))
                             self.device.send_data_broadcast(sleepCommandToSend)   
-                            self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
-                            TransCommand = WAIT_FOR_WAKE_UP_COMMAND
-                            self.device.flush_queues
+                            transceiverCmd = WAIT_FOR_WAKE_UP_COMMAND
                             break  
                         elif time.monotonic() > lastSampleTime + SAMPLE_TIMEOUT:
                             # timeout has occured; restart transmission
                             print("Data sample was not received within the expected time. Restarting transmission...")
-                            TransCommand = DEFAULT_COMMAND
-                            self.mySerialMsgManager.deleteSampleParsed(numSamples)
+                            transceiverCmd = DEFAULT_COMMAND
+                            self.mySerialMsgManager.deleteSampleParsed(numSamplesToReceive)
                             self.mySerialMsgManager.setSampleNumToParse(DEFAULT_NUM_SAMPLES)
                             self.device.flush_queues
                             break
@@ -107,7 +106,7 @@ class XBeeTransceiver(threading.Thread):
                     if self.device is not None and self.device.is_open():
                         self.device.close()
                         
-            elif TransCommand is WAIT_FOR_WAKE_UP_COMMAND:
+            elif transceiverCmd is WAIT_FOR_WAKE_UP_COMMAND:
                try: 
                     print("The Transceiver is now waiting for wake up command...\n")
                     while(True):
@@ -118,7 +117,7 @@ class XBeeTransceiver(threading.Thread):
                             if self.mySerialMsgManager.parseWakeUpCommand(decodedData):
                                 # received the wake up handshake
                                 print("The Teensy is now awake!\n")
-                                TransCommand = DEFAULT_COMMAND
+                                transceiverCmd = DEFAULT_COMMAND
                                 break
                except TimeoutException as to:
                     print("Unable to receive data, because ", repr(to))
